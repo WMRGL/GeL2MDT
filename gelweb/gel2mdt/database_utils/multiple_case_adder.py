@@ -719,10 +719,11 @@ class PanelManager(object):
         the added PanelResponse instance.
         """
         if panelapp_id not in self.fetched_panels:
+            print("panel ID:", panelapp_id)
             self.fetched_panels[panelapp_id] = {}
-            self.panel_names[panelapp_id] = {'SpecificDiseaseName': panelapp_response['SpecificDiseaseName'],
-                                             'DiseaseGroup': panelapp_response['DiseaseGroup'],
-                                             'DiseaseSubGroup': panelapp_response['DiseaseSubGroup']}
+            self.panel_names[panelapp_id] = {'SpecificDiseaseName': panelapp_response['name'],
+                                             'DiseaseGroup': panelapp_response['disease_group'],
+                                             'DiseaseSubGroup': panelapp_response['disease_sub_group']}
         self.fetched_panels[panelapp_id][panel_version] = PanelResponse(
                 panelapp_response=panelapp_response
         )

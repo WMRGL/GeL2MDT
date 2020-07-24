@@ -292,10 +292,10 @@ class Case(object):
         return ig_obj, case_variant_list, variant_object_count
 
     def parse_ig_svs(self, ig_obj, genome_build, case_sv_list):
-        if ig_obj.softwareVersions['gel-tiering'] == '1.0.0':
-            for variant in ig_obj.structuralVariants:
-                variant.case_variant = False
-            return ig_obj, case_sv_list
+        # if ig_obj.softwareVersions['gel-tiering'] == '1.0.0':
+        #     for variant in ig_obj.structuralVariants:
+        #         variant.case_variant = False
+        #     return ig_obj, case_sv_list
         for variant in ig_obj.structuralVariants:
             interesting_variant = False
             for report_event in variant.reportEvents:
@@ -318,10 +318,10 @@ class Case(object):
         return ig_obj, case_sv_list
 
     def parse_ig_strs(self, ig_obj, genome_build, case_str_list):
-        if ig_obj.softwareVersions['gel-tiering'] ==  '1.0.0':
-            for variant in ig_obj.shortTandemRepeats:
-                variant.case_variant = False
-            return ig_obj, case_str_list
+        # if ig_obj.softwareVersions['gel-tiering'] ==  '1.0.0':
+        #     for variant in ig_obj.shortTandemRepeats:
+        #         variant.case_variant = False
+        #     return ig_obj, case_str_list
         participant_id = self.json["proband"]
         mother_id = None
         father_id = None
@@ -771,9 +771,17 @@ class CaseAttributeManager(object):
 
         return family_phenotypes
 
-    def get_panelapp_api_response(self, panel, panel_file):
+    def get_panelapp_panel_id(self, panel):
         panelapp_poll = PollAPI(
-            "panelapp", f"get_panel/{panel.panelName}/?version={panel.panelVersion}")
+            "panelapp", f"panels/{panel.panelName}")
+        response = panelapp_poll.get_json_response()
+        return response['id']
+
+    def get_panelapp_api_response(self, panel, panel_file):
+        print("Attempting to poll panelapp")
+        print(f"panels/{panel.panelappId}/?version={panel.panelVersion}")
+        panelapp_poll = PollAPI(
+            "panelapp", f"panels/{panel.panelappId}/?version={panel.panelVersion}")
         with open(panel_file, 'w') as f:
             json.dump(panelapp_poll.get_json_response(), f)
             panel_app_response = panelapp_poll.get_json_response()
@@ -798,19 +806,22 @@ class CaseAttributeManager(object):
                 if not polled:
                     panel_file = os.path.join(panelapp_storage, f'{panel.panelName}_{panel.panelVersion}.json')
                     if os.path.isfile(panel_file):
-
                         try:
                             panelapp_response = json.load(open(panel_file))
                         except:
+                            panel_id = self.get_panelapp_panel_id(panel)
+                            panel.panelappId = panel_id
                             panelapp_response = self.get_panelapp_api_response(panel, panel_file)
                     else:
+                        panel_id = self.get_panelapp_panel_id(panel)
+                        panel.panelappId = panel_id
                         panelapp_response = self.get_panelapp_api_response(panel, panel_file)
 
                     # inform the PanelManager that a new panel has been added
                     polled = self.case.panel_manager.add_panel_response(
                         panelapp_id=panel.panelName,
                         panel_version=panel.panelVersion,
-                        panelapp_response=panelapp_response["result"]
+                        panelapp_response=panelapp_response
                     )
                     panel.panelapp_results = polled.results
 
@@ -866,18 +877,19 @@ class CaseAttributeManager(object):
         gene_list = []
         if panels:
             for panel in panels:
-                genes = panel.panelapp_results["Genes"]
+                genes = panel.panelapp_results["genes"]
                 gene_list += genes
 
         for gene in gene_list:
+            gene['EnsembleGeneIds'] = gene["gene_data"]["ensembl_genes"]["GRch38"]['90']['ensembl_id']
             # Alot of pilot cases just have E for this
-            if not gene["EnsembleGeneIds"] or gene["EnsembleGeneIds"] == 'E':
-                gene["EnsembleGeneIds"] = None
-            else:
-                if type(gene['EnsembleGeneIds']) is str:
-                    gene['EnsembleGeneIds'] = gene['EnsembleGeneIds']
-                else:
-                    gene['EnsembleGeneIds'] = gene['EnsembleGeneIds'][0]
+            # if not gene["gene_data"]["ensembl_genes"]["GRch38"][] or gene["EnsembleGeneIds"] == 'E':
+            #     gene["EnsembleGeneIds"] = None
+            # else:
+            #     if type(gene['EnsembleGeneIds']) is str:
+            #         gene['EnsembleGeneIds'] = gene['EnsembleGeneIds']
+            #     else:
+            #         gene['EnsembleGeneIds'] = gene['EnsembleGeneIds'][0]
 
         for ig_obj in self.case.ig_objs:
             if ig_obj.structuralVariants:
@@ -938,9 +950,12 @@ class CaseAttributeManager(object):
 
         self.case.gene_manager.write_genes()
 
+        for item in cleaned_gene_list:
+            print(item)
+
         genes = ManyCaseModel(Gene, [{
             "ensembl_id": gene["EnsembleGeneIds"],  # TODO: which ID to use?
-            "hgnc_name": gene["GeneSymbol"],
+            "hgnc_name": gene["gene_data"]["gene_symbol"],
             "hgnc_id": gene['HGNC_ID']
         } for gene in cleaned_gene_list if gene["HGNC_ID"]], self.model_objects)
         return genes

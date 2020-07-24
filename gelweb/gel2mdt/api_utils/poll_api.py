@@ -90,7 +90,7 @@ class PollAPI(object):
         if self.config['beta_testing'] == "True":
             cip_api_url = "https://cipapi-gms-beta.genomicsengland.nhs.uk/api/2/{endpoint}"
         else:
-            cip_api_url = "https://cipapi.genomicsengland.nhs.uk/api/2/{endpoint}"
+            cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/api/2/{endpoint}"
         self.server_list = {
             "cip_api": (
                 cip_api_url,
@@ -99,7 +99,7 @@ class PollAPI(object):
                 "https://cipapi.genomicsengland.nhs.uk/api/{endpoint}",
                 True),
             "panelapp": (
-                "https://panelapp.genomicsengland.co.uk/WebServices/{endpoint}",
+                "https://panelapp.genomicsengland.co.uk/api/v1/{endpoint}",
                 False),
             "ensembl": (
                 "https://rest.ensembl.org/{endpoint}",
@@ -172,6 +172,7 @@ class PollAPI(object):
                 # no headers required
                 response = session.get(
                     url=self.url)
+
 
             if content:
                 return response.content  # return the content, which is a JSON
